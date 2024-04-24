@@ -14,7 +14,7 @@ import json
 class PeoplePaHttp(GAPI):
     def __init__(self, creds: GHuntCreds, headers: Dict[str, str] = {}):
         super().__init__()
-        
+
         if not headers:
             headers = gb.config.headers
 
@@ -25,17 +25,21 @@ class PeoplePaHttp(GAPI):
         self.hostname = "people-pa.clients6.google.com"
         self.scheme = "https"
 
-        self.authentication_mode = "sapisidhash" # sapisidhash, cookies_only, oauth or None
-        self.require_key = "photos" # key name, or None
+        self.authentication_mode = (
+            "sapisidhash"  # sapisidhash, cookies_only, oauth or None
+        )
+        self.require_key = "drive"  # key name, or None
 
         self._load_api(creds, headers)
 
-    async def people_lookup(self, as_client: httpx.AsyncClient, email: str, params_template="just_gaia_id") -> Tuple[bool, Person]:
+    async def people_lookup(
+        self, as_client: httpx.AsyncClient, email: str, params_template="just_gaia_id"
+    ) -> Tuple[bool, Person]:
         endpoint_name = inspect.currentframe().f_code.co_name
 
         verb = "GET"
         base_url = "/v2/people/lookup"
-        data_type = None # json, data or None
+        data_type = None  # json, data or None
         params_templates = {
             "just_gaia_id": {
                 "id": email,
@@ -56,7 +60,7 @@ class PeoplePaHttp(GAPI):
                     "PROFILE",
                     "DOMAIN_PROFILE",
                 ],
-                "core_id_params.enable_private_names": True
+                "core_id_params.enable_private_names": True,
             },
             "max_details": {
                 "id": email,
@@ -65,7 +69,6 @@ class PeoplePaHttp(GAPI):
                 "extension_set.extension_names": [
                     "DYNAMITE_ADDITIONAL_DATA",
                     "DYNAMITE_ORGANIZATION_INFO",
-                    # "GPLUS_ADDITIONAL_DATA"
                 ],
                 "request_mask.include_field.paths": [
                     "person.metadata.best_display_name",
@@ -74,11 +77,11 @@ class PeoplePaHttp(GAPI):
                     "person.interaction_settings",
                     "person.legacy_fields",
                     "person.metadata",
-                    # "person.in_app_reachability",
+                    "person.in_app_reachability",
                     "person.name",
                     "person.read_only_profile_info",
                     "person.sort_keys",
-                    "person.email"
+                    "person.email",
                 ],
                 "request_mask.include_container": [
                     "AFFINITY",
@@ -90,35 +93,46 @@ class PeoplePaHttp(GAPI):
                     "DOMAIN_CONTACT",
                     "DEVICE_CONTACT",
                     "GOOGLE_GROUP",
-                    "CONTACT"
                 ],
-                "core_id_params.enable_private_names": True
-            }
+                "core_id_params.enable_private_names": True,
+            },
         }
 
         if not params_templates.get(params_template):
-            raise GHuntParamsTemplateError(f"The asked template {params_template} for the endpoint {endpoint_name} wasn't recognized by GHunt.")
+            raise GHuntParamsTemplateError(
+                f"The asked template {params_template} for the endpoint {endpoint_name} wasn't recognized by GHunt."
+            )
 
         self._load_endpoint(endpoint_name)
-        req = await self._query(as_client, verb, endpoint_name, base_url, params_templates[params_template], None, data_type)
+        req = await self._query(
+            as_client,
+            verb,
+            endpoint_name,
+            base_url,
+            params_templates[params_template],
+            None,
+            data_type,
+        )
 
         # Parsing
         data = json.loads(req.text)
         person = Person()
         if not data:
             return False, person
-        
+
         person_data = list(data["people"].values())[0]
         await person._scrape(as_client, person_data)
 
         return True, person
 
-    async def people(self, as_client: httpx.AsyncClient, gaia_id: str, params_template="just_name") -> Tuple[bool, Person]:
+    async def people(
+        self, as_client: httpx.AsyncClient, gaia_id: str, params_template="just_name"
+    ) -> Tuple[bool, Person]:
         endpoint_name = inspect.currentframe().f_code.co_name
 
         verb = "GET"
         base_url = "/v2/people"
-        data_type = None # json, data or None
+        data_type = None  # json, data or None
         params_templates = {
             "just_name": {
                 "person_id": gaia_id,
@@ -127,7 +141,7 @@ class PeoplePaHttp(GAPI):
                     "PROFILE",
                     "DOMAIN_PROFILE",
                 ],
-                "core_id_params.enable_private_names": True
+                "core_id_params.enable_private_names": True,
             },
             "max_details": {
                 "person_id": gaia_id,
@@ -147,7 +161,7 @@ class PeoplePaHttp(GAPI):
                     "person.name",
                     "person.read_only_profile_info",
                     "person.sort_keys",
-                    "person.email"
+                    "person.email",
                 ],
                 "request_mask.include_container": [
                     "AFFINITY",
@@ -159,24 +173,34 @@ class PeoplePaHttp(GAPI):
                     "DOMAIN_CONTACT",
                     "DEVICE_CONTACT",
                     "GOOGLE_GROUP",
-                    "CONTACT"
+                    "CONTACT",
                 ],
-                "core_id_params.enable_private_names": True
-            }
+                "core_id_params.enable_private_names": True,
+            },
         }
 
         if not params_templates.get(params_template):
-            raise GHuntParamsTemplateError(f"The asked template {params_template} for the endpoint {endpoint_name} wasn't recognized by GHunt.")
+            raise GHuntParamsTemplateError(
+                f"The asked template {params_template} for the endpoint {endpoint_name} wasn't recognized by GHunt."
+            )
 
         self._load_endpoint(endpoint_name)
-        req = await self._query(as_client, verb, endpoint_name, base_url, params_templates[params_template], None, data_type)
+        req = await self._query(
+            as_client,
+            verb,
+            endpoint_name,
+            base_url,
+            params_templates[params_template],
+            None,
+            data_type,
+        )
 
         # Parsing
         data = json.loads(req.text)
         person = Person()
         if data["personResponse"][0]["status"] == "NOT_FOUND":
             return False, person
-        
+
         person_data = data["personResponse"][0]["person"]
         await person._scrape(as_client, person_data)
 
